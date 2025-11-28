@@ -1,0 +1,145 @@
+---
+# macOS role - system settings for unattended operation
+
+# Prevent sleep - critical for build machines
+- name: Disable system sleep
+  ansible.builtin.command: pmset -a sleep 0
+  become: true
+  changed_when: true
+
+- name: Disable display sleep
+  ansible.builtin.command: pmset -a displaysleep 0
+  become: true
+  changed_when: true
+
+- name: Disable hard disk sleep
+  ansible.builtin.command: pmset -a disksleep 0
+  become: true
+  changed_when: true
+
+- name: Prevent idle sleep
+  ansible.builtin.command: pmset -a womp 1
+  become: true
+  changed_when: true
+  ignore_errors: true  # May not be available on all Macs
+
+- name: Enable wake on network access
+  ansible.builtin.command: pmset -a networkoversleep 0
+  become: true
+  changed_when: true
+  ignore_errors: true
+
+# Restart after power failure
+- name: Auto restart after power failure
+  ansible.builtin.command: pmset -a autorestart 1
+  become: true
+  changed_when: true
+
+# Disable screen saver
+- name: Disable screen saver
+  ansible.builtin.command: defaults -currentHost write com.apple.screensaver idleTime 0
+  changed_when: true
+
+# Software updates - security only, no major upgrades
+- name: Enable automatic security updates
+  ansible.builtin.command: >
+    defaults write /Library/Preferences/com.apple.SoftwareUpdate
+    CriticalUpdateInstall -bool {{ macos_auto_install_security_updates | lower }}
+  become: true
+  changed_when: true
+
+- name: Enable automatic update check
+  ansible.builtin.command: >
+    defaults write /Library/Preferences/com.apple.SoftwareUpdate
+    AutomaticCheckEnabled -bool {{ macos_auto_update_check | lower }}
+  become: true
+  changed_when: true
+
+- name: Enable automatic download of updates
+  ansible.builtin.command: >
+    defaults write /Library/Preferences/com.apple.SoftwareUpdate
+    AutomaticDownload -bool {{ macos_auto_download_updates | lower }}
+  become: true
+  changed_when: true
+
+# DISABLE automatic major OS upgrades (we want to control these)
+- name: Disable automatic major OS upgrades
+  ansible.builtin.command: >
+    defaults write /Library/Preferences/com.apple.SoftwareUpdate
+    AutomaticallyInstallMacOSUpdates -bool false
+  become: true
+  changed_when: true
+
+# Disable automatic app store updates
+- name: Disable automatic App Store updates
+  ansible.builtin.command: >
+    defaults write /Library/Preferences/com.apple.commerce
+    AutoUpdate -bool false
+  become: true
+  changed_when: true
+
+# Disable Gatekeeper for easier CLI tool usage (optional - comment if security concern)
+- name: Allow apps from anywhere (disable Gatekeeper prompts)
+  ansible.builtin.command: spctl --master-disable
+  become: true
+  changed_when: true
+  ignore_errors: true
+
+# SSH access for remote management
+- name: Enable SSH (Remote Login)
+  ansible.builtin.command: systemsetup -setremotelogin on
+  become: true
+  changed_when: true
+  ignore_errors: true
+
+# Set timezone
+- name: Set timezone to UTC for consistent builds
+  ansible.builtin.command: systemsetup -settimezone UTC
+  become: true
+  changed_when: true
+  ignore_errors: true
+
+# Disable Notification Center (prevents popups)
+- name: Disable Notification Center
+  ansible.builtin.command: launchctl unload -w /System/Library/LaunchAgents/com.apple.notificationcenterui.plist
+  changed_when: true
+  ignore_errors: true
+
+# Set up log rotation for our logs
+- name: Create newsyslog config for build logs
+  ansible.builtin.copy:
+    content: |
+      # Log rotation for build machine logs
+      # Managed by Ansible
+      /var/log/ansible-pull.log          644  7     5000  *     J
+      /var/log/ansible-pull.error.log    644  7     1000  *     J
+      /var/log/nightly-maintenance.log   644  7     1000  *     J
+      /var/log/buildkite-agent-*.log     644  7     10000 *     J
+    dest: /etc/newsyslog.d/mac-build.conf
+    mode: '0644'
+  become: true
+
+# Disk space check script
+- name: Deploy disk space check script
+  ansible.builtin.copy:
+    content: |
+      #!/bin/bash
+      # Check disk space and warn if low
+      THRESHOLD=90
+      USAGE=$(df -h / | awk 'NR==2 {gsub(/%/,""); print $5}')
+      if [ "$USAGE" -gt "$THRESHOLD" ]; then
+        echo "WARNING: Disk usage is ${USAGE}% - above ${THRESHOLD}% threshold" | tee -a /var/log/disk-warning.log
+        # Could add Slack/email notification here
+      fi
+    dest: /usr/local/bin/check-disk-space.sh
+    mode: '0755'
+  become: true
+
+# Schedule disk space checks
+- name: Deploy disk space check launchd plist
+  ansible.builtin.template:
+    src: com.internal.disk-check.plist.j2
+    dest: /Library/LaunchDaemons/com.internal.disk-check.plist
+    mode: '0644'
+  become: true
+  notify: load disk check service

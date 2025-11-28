@@ -1,0 +1,7 @@
+---
+# macOS handlers
+
+- name: load disk check service
+  ansible.builtin.command: launchctl load /Library/LaunchDaemons/com.internal.disk-check.plist
+  become: true
+  ignore_errors: true

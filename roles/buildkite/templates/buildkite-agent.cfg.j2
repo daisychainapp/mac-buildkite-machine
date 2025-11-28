@@ -1,0 +1,40 @@
+# Buildkite Agent Configuration
+# Managed by Ansible - do not edit manually
+
+# Agent token from Buildkite
+token="{{ vault_buildkite_agent_token }}"
+
+# Agent name (includes hostname and agent number)
+name="{{ ansible_hostname }}-%spawn"
+
+# Agent priority (higher = picked first)
+priority={{ buildkite_agent_priority }}
+
+# Tags for targeting builds
+tags="{{ buildkite_agent_tags | join(',') }}"
+
+# Build paths
+build-path="{{ buildkite_builds_path }}"
+hooks-path="{{ buildkite_hooks_path }}"
+plugins-path="{{ buildkite_plugins_path }}"
+
+# Git settings
+git-clean-flags="-ffdq"
+git-clone-flags="-v"
+git-clone-mirror-flags="-v"
+
+# Job settings
+cancel-grace-period=30
+disconnect-after-idle-timeout=0
+
+# Enable experiment features (optional)
+# experiment="git-mirrors"
+
+# Shell (use bash for consistency)
+shell="/bin/bash -e -c"
+
+# Health check
+health-check-addr="127.0.0.1:808%spawn"
+
+# Logging
+debug=false

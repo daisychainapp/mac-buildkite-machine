@@ -1,0 +1,20 @@
+{
+  "autoStart": true,
+  "displayedWelcomeWhale": true,
+  "memoryMiB": {{ docker_memory_gb * 1024 }},
+  "cpus": {{ docker_cpus }},
+  "diskSizeMiB": {{ docker_disk_size_gb * 1024 }},
+  "swapMiB": 1024,
+  "filesharingDirectories": [
+    "/Users",
+    "/Volumes",
+    "/private",
+    "/tmp",
+    "/var/folders"
+  ],
+  "useVirtualizationFramework": true,
+  "useVirtualizationFrameworkRosetta": true,
+  "useGrpcfuse": true,
+  "licenseTermsVersion": 2,
+  "analyticsEnabled": false
+}

@@ -1,0 +1,71 @@
+---
+# Buildkite role - configure Buildkite agents
+
+- name: Set Homebrew prefix fact
+  ansible.builtin.set_fact:
+    homebrew_prefix: "{{ '/opt/homebrew' if ansible_architecture == 'arm64' else '/usr/local' }}"
+
+- name: Ensure Buildkite directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ homebrew_prefix }}/etc/buildkite-agent"
+    - "{{ buildkite_hooks_path }}"
+    - "{{ buildkite_builds_path }}"
+    - "{{ buildkite_plugins_path }}"
+
+- name: Deploy Buildkite agent configuration
+  ansible.builtin.template:
+    src: buildkite-agent.cfg.j2
+    dest: "{{ homebrew_prefix }}/etc/buildkite-agent/buildkite-agent.cfg"
+    mode: '0600'
+  notify: restart buildkite agents
+
+- name: Deploy environment hook
+  ansible.builtin.template:
+    src: hooks/environment.j2
+    dest: "{{ buildkite_hooks_path }}/environment"
+    mode: '0755'
+  notify: restart buildkite agents
+
+- name: Deploy pre-exit hook for cleanup
+  ansible.builtin.template:
+    src: hooks/pre-exit.j2
+    dest: "{{ buildkite_hooks_path }}/pre-exit"
+    mode: '0755'
+
+- name: Ensure LaunchAgents directory exists
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/Library/LaunchAgents"
+    state: directory
+    mode: '0755'
+
+- name: Deploy Buildkite agent launchd plists
+  ansible.builtin.template:
+    src: com.buildkite.buildkite-agent.plist.j2
+    dest: "{{ ansible_env.HOME }}/Library/LaunchAgents/com.buildkite.buildkite-agent-{{ item }}.plist"
+    mode: '0644'
+  loop: "{{ range(1, buildkite_agent_count + 1) | list }}"
+  notify: restart buildkite agents
+  vars:
+    agent_number: "{{ item }}"
+
+- name: Load Buildkite agent services
+  ansible.builtin.command: >
+    launchctl load {{ ansible_env.HOME }}/Library/LaunchAgents/com.buildkite.buildkite-agent-{{ item }}.plist
+  loop: "{{ range(1, buildkite_agent_count + 1) | list }}"
+  register: launchctl_load
+  changed_when: launchctl_load.rc == 0
+  failed_when: false
+
+- name: Verify Buildkite agents are running
+  ansible.builtin.command: pgrep -f buildkite-agent
+  register: buildkite_running
+  changed_when: false
+  failed_when: false
+
+- name: Display Buildkite agent status
+  ansible.builtin.debug:
+    msg: "Buildkite agents running: {{ buildkite_running.stdout_lines | length | default(0) }} of {{ buildkite_agent_count }}"

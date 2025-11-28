@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.internal.docker-weekly-clean</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>-c</string>
+        <string>docker system prune -af --volumes 2>/dev/null; docker builder prune -af 2>/dev/null; exit 0</string>
+    </array>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Weekday</key>
+        <integer>0</integer>
+        <key>Hour</key>
+        <integer>4</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>{{ log_dir }}/docker-weekly-clean.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>{{ log_dir }}/docker-weekly-clean.error.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>{{ homebrew_prefix }}/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>DOCKER_HOST</key>
+        <string>unix:///var/run/docker.sock</string>
+    </dict>
+</dict>
+</plist>

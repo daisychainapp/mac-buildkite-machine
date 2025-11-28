@@ -1,0 +1,24 @@
+---
+# Buildkite handlers
+
+- name: restart buildkite agents
+  block:
+    - name: Stop all Buildkite agents
+      ansible.builtin.shell: |
+        for i in $(seq 1 {{ buildkite_agent_count }}); do
+          launchctl unload {{ ansible_env.HOME }}/Library/LaunchAgents/com.buildkite.buildkite-agent-${i}.plist 2>/dev/null || true
+        done
+      args:
+        executable: /bin/bash
+
+    - name: Wait for agents to stop
+      ansible.builtin.pause:
+        seconds: 5
+
+    - name: Start all Buildkite agents
+      ansible.builtin.shell: |
+        for i in $(seq 1 {{ buildkite_agent_count }}); do
+          launchctl load {{ ansible_env.HOME }}/Library/LaunchAgents/com.buildkite.buildkite-agent-${i}.plist 2>/dev/null || true
+        done
+      args:
+        executable: /bin/bash

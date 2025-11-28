@@ -1,0 +1,62 @@
+---
+# Common role - base system configuration
+
+- name: Ensure Xcode Command Line Tools are installed
+  ansible.builtin.stat:
+    path: /Library/Developer/CommandLineTools
+  register: xcode_clt
+
+- name: Prompt about Xcode CLI Tools if missing
+  ansible.builtin.fail:
+    msg: |
+      Xcode Command Line Tools are not installed.
+      Run: xcode-select --install
+      Then re-run this playbook.
+  when: not xcode_clt.stat.exists
+
+- name: Create standard directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ ansible_pull_workdir }}"
+    - "{{ buildkite_hooks_path }}"
+    - "{{ buildkite_builds_path }}"
+    - "{{ buildkite_plugins_path }}"
+  become: true
+
+- name: Ensure /etc/ansible directory exists
+  ansible.builtin.file:
+    path: /etc/ansible
+    state: directory
+    mode: '0755'
+  become: true
+
+- name: Set hostname if not already set
+  ansible.builtin.hostname:
+    name: "{{ inventory_hostname }}"
+  when: inventory_hostname != 'localhost'
+  become: true
+
+- name: Configure Git global settings
+  community.general.git_config:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    scope: global
+  loop:
+    - { name: "core.autocrlf", value: "input" }
+    - { name: "init.defaultBranch", value: "main" }
+  ignore_errors: true
+
+- name: Ensure SSH directory exists
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.ssh"
+    state: directory
+    mode: '0700'
+
+- name: Add GitHub to known hosts
+  ansible.builtin.known_hosts:
+    name: github.com
+    key: "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl"
+    state: present

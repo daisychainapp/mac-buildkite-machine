@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.internal.ansible-pull</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>{{ homebrew_prefix }}/bin/ansible-pull</string>
+        <string>-U</string>
+        <string>{{ ansible_pull_repo_url }}</string>
+        <string>-C</string>
+        <string>{{ ansible_pull_branch }}</string>
+        <string>-d</string>
+        <string>{{ ansible_pull_workdir }}</string>
+        <string>--vault-password-file</string>
+        <string>{{ vault_password_file }}</string>
+        <string>-i</string>
+        <string>localhost,</string>
+        <string>-e</string>
+        <string>ansible_python_interpreter={{ homebrew_prefix }}/bin/python3</string>
+        <string>playbooks/site.yml</string>
+    </array>
+
+    <key>StartInterval</key>
+    <integer>{{ ansible_pull_interval }}</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>{{ log_dir }}/ansible-pull.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>{{ log_dir }}/ansible-pull.error.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>{{ homebrew_prefix }}/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>HOME</key>
+        <string>/var/root</string>
+        <key>ANSIBLE_FORCE_COLOR</key>
+        <string>0</string>
+    </dict>
+
+    <key>Nice</key>
+    <integer>10</integer>
+</dict>
+</plist>

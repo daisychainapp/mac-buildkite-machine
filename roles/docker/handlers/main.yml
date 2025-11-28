@@ -1,0 +1,23 @@
+---
+# Docker handlers
+
+- name: restart docker
+  block:
+    - name: Quit Docker Desktop
+      ansible.builtin.command: osascript -e 'quit app "Docker"'
+      ignore_errors: true
+
+    - name: Wait for Docker to stop
+      ansible.builtin.pause:
+        seconds: 5
+
+    - name: Start Docker Desktop
+      ansible.builtin.command: open -a Docker
+
+    - name: Wait for Docker to be ready
+      ansible.builtin.command: docker info
+      register: docker_ready
+      until: docker_ready.rc == 0
+      retries: 30
+      delay: 5
+      changed_when: false

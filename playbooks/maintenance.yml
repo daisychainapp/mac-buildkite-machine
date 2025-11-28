@@ -1,0 +1,57 @@
+---
+# Maintenance playbook - run during nightly maintenance window
+# This is called by the nightly-maintenance.sh script
+
+- name: Perform maintenance tasks
+  hosts: all
+  gather_facts: true
+
+  vars_files:
+    - ../group_vars/all.yml
+
+  tasks:
+    - name: Update Homebrew
+      community.general.homebrew:
+        update_homebrew: true
+      ignore_errors: true
+
+    - name: Upgrade all Homebrew packages
+      community.general.homebrew:
+        upgrade_all: true
+      ignore_errors: true
+
+    - name: Upgrade Homebrew casks
+      ansible.builtin.command: brew upgrade --cask --greedy
+      register: cask_upgrade
+      changed_when: "'upgraded' in cask_upgrade.stdout"
+      ignore_errors: true
+
+    - name: Clean up Homebrew cache
+      ansible.builtin.command: brew cleanup -s
+      register: brew_cleanup
+      changed_when: "'Removing' in brew_cleanup.stdout"
+      ignore_errors: true
+
+    - name: Check for macOS software updates
+      ansible.builtin.command: softwareupdate --list
+      register: macos_updates
+      changed_when: false
+      ignore_errors: true
+
+    - name: Display available macOS updates
+      ansible.builtin.debug:
+        var: macos_updates.stdout_lines
+      when: macos_updates.stdout | length > 0
+
+    - name: Record maintenance run
+      ansible.builtin.copy:
+        content: |
+          {
+            "hostname": "{{ ansible_hostname }}",
+            "timestamp": "{{ ansible_date_time.iso8601 }}",
+            "homebrew_upgraded": {{ cask_upgrade is changed or brew_cleanup is changed }},
+            "macos_updates_available": {{ 'Software Update found' in (macos_updates.stdout | default('')) }}
+          }
+        dest: "{{ log_dir }}/ansible-maintenance.json"
+        mode: '0644'
+      become: true

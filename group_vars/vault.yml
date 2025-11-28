@@ -1,0 +1,26 @@
+---
+# Encrypted secrets - encrypt this file with: ansible-vault encrypt group_vars/vault.yml
+#
+# After encrypting, the file will look like:
+# $ANSIBLE_VAULT;1.1;AES256
+# 62313365396532313362613439336563...
+#
+# To edit: ansible-vault edit group_vars/vault.yml
+# To view: ansible-vault view group_vars/vault.yml
+
+# Buildkite agent token (get from Buildkite > Agents > Token)
+vault_buildkite_agent_token: "your-buildkite-agent-token-here"
+
+# GitHub deploy key for ansible-pull (private key content)
+# Generate with: ssh-keygen -t ed25519 -C "ansible-pull-deploy-key" -f deploy_key
+# Add the public key to GitHub repo > Settings > Deploy keys
+vault_github_deploy_key: |
+  -----BEGIN OPENSSH PRIVATE KEY-----
+  your-private-key-content-here
+  -----END OPENSSH PRIVATE KEY-----
+
+# Optional: Additional build secrets
+# vault_npm_token: ""
+# vault_docker_hub_token: ""
+# vault_aws_access_key_id: ""
+# vault_aws_secret_access_key: ""

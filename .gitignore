@@ -1,0 +1,27 @@
+# Ansible
+*.retry
+.ansible_fact_cache/
+
+# Secrets (vault.yml should be encrypted, but be safe)
+*.vault-pass
+deploy_key
+deploy_key.pub
+
+# macOS
+.DS_Store
+._*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Logs
+*.log

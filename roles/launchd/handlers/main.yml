@@ -1,0 +1,24 @@
+---
+# Launchd handlers
+
+- name: reload ansible-pull service
+  block:
+    - name: Unload ansible-pull service
+      ansible.builtin.command: launchctl unload /Library/LaunchDaemons/com.internal.ansible-pull.plist
+      become: true
+      ignore_errors: true
+
+    - name: Load ansible-pull service
+      ansible.builtin.command: launchctl load /Library/LaunchDaemons/com.internal.ansible-pull.plist
+      become: true
+
+- name: reload nightly maintenance service
+  block:
+    - name: Unload nightly maintenance service
+      ansible.builtin.command: launchctl unload /Library/LaunchDaemons/com.internal.nightly-maintenance.plist
+      become: true
+      ignore_errors: true
+
+    - name: Load nightly maintenance service
+      ansible.builtin.command: launchctl load /Library/LaunchDaemons/com.internal.nightly-maintenance.plist
+      become: true

@@ -1,0 +1,68 @@
+---
+# Main playbook - applies all roles to configure build machines
+#
+# Usage:
+#   ansible-playbook playbooks/site.yml --vault-password-file /etc/ansible/.vault-pass -c local -i localhost,
+
+- name: Configure macOS build machines
+  hosts: all
+  gather_facts: true
+
+  vars_files:
+    - ../group_vars/all.yml
+    - ../group_vars/vault.yml
+
+  pre_tasks:
+    - name: Display target machine info
+      ansible.builtin.debug:
+        msg: |
+          Configuring: {{ ansible_hostname }}
+          macOS: {{ ansible_distribution_version }}
+          Architecture: {{ ansible_architecture }}
+
+  roles:
+    - role: common
+      tags: [common, always]
+
+    - role: homebrew
+      tags: [homebrew, packages]
+
+    - role: docker
+      tags: [docker]
+
+    - role: secrets
+      tags: [secrets]
+
+    - role: buildkite
+      tags: [buildkite, agent]
+
+    - role: macos
+      tags: [macos, system]
+
+    - role: launchd
+      tags: [launchd, services]
+
+  post_tasks:
+    - name: Record successful configuration run
+      ansible.builtin.copy:
+        content: |
+          {
+            "hostname": "{{ ansible_hostname }}",
+            "timestamp": "{{ ansible_date_time.iso8601 }}",
+            "git_commit": "{{ lookup('pipe', 'git -C ' + ansible_pull_workdir + ' rev-parse HEAD 2>/dev/null || echo unknown') }}",
+            "ansible_version": "{{ ansible_version.full }}",
+            "macos_version": "{{ ansible_distribution_version }}",
+            "success": true
+          }
+        dest: "{{ log_dir }}/ansible-last-run.json"
+        mode: '0644'
+      become: true
+
+    - name: Display completion message
+      ansible.builtin.debug:
+        msg: |
+          Configuration complete!
+          - Buildkite agents: {{ buildkite_agent_count }}
+          - Docker Desktop: installed
+          - Auto-update: every {{ ansible_pull_interval // 60 }} minutes
+          - Nightly maintenance: {{ maintenance_hour }}:{{ '%02d' | format(maintenance_minute) }}

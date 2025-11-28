@@ -1,0 +1,135 @@
+#!/bin/bash
+#
+# Nightly maintenance script for macOS build machines
+# Managed by Ansible - do not edit manually
+#
+# This script:
+# 1. Gracefully stops Buildkite agents
+# 2. Waits for running builds to complete
+# 3. Cleans up Docker resources
+# 4. Runs Ansible maintenance playbook
+# 5. Reboots the machine
+#
+
+set -euo pipefail
+
+LOG_FILE="{{ log_dir }}/nightly-maintenance.log"
+BUILDKITE_AGENT_COUNT={{ buildkite_agent_count }}
+BUILD_TIMEOUT={{ maintenance_build_timeout }}
+HOMEBREW_PREFIX="{{ homebrew_prefix }}"
+ANSIBLE_WORKDIR="{{ ansible_pull_workdir }}"
+VAULT_PASSWORD_FILE="{{ vault_password_file }}"
+
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
+}
+
+log "=========================================="
+log "Nightly Maintenance Started"
+log "=========================================="
+
+# Step 1: Stop accepting new builds
+log "Stopping Buildkite agents gracefully..."
+for i in $(seq 1 $BUILDKITE_AGENT_COUNT); do
+    PLIST_FILE="$HOME/Library/LaunchAgents/com.buildkite.buildkite-agent-${i}.plist"
+    if [ -f "$PLIST_FILE" ]; then
+        launchctl unload "$PLIST_FILE" 2>/dev/null || true
+        log "  Agent $i unloaded"
+    fi
+done
+
+# Step 2: Wait for running builds to complete
+log "Waiting for running builds to complete (max ${BUILD_TIMEOUT}s)..."
+ELAPSED=0
+while pgrep -f "buildkite-agent" > /dev/null 2>&1; do
+    if [ $ELAPSED -ge $BUILD_TIMEOUT ]; then
+        log "WARNING: Timeout waiting for builds. Killing remaining agents."
+        pkill -9 -f "buildkite-agent" 2>/dev/null || true
+        break
+    fi
+    sleep 10
+    ELAPSED=$((ELAPSED + 10))
+    log "  Still waiting... (${ELAPSED}s elapsed)"
+done
+log "All Buildkite agents stopped"
+
+# Step 3: Clean up Docker resources
+log "Cleaning up Docker resources..."
+if command -v docker &> /dev/null; then
+    # Stop all running containers
+    RUNNING=$(docker ps -q 2>/dev/null | wc -l | tr -d ' ')
+    if [ "$RUNNING" -gt 0 ]; then
+        log "  Stopping $RUNNING running containers..."
+        docker stop $(docker ps -q) 2>/dev/null || true
+    fi
+
+    # Remove all containers
+    log "  Removing containers..."
+    docker container prune -f 2>/dev/null || true
+
+    # Remove unused images
+    log "  Removing unused images..."
+    docker image prune -af 2>/dev/null || true
+
+    # Remove unused volumes
+    log "  Removing unused volumes..."
+    docker volume prune -f 2>/dev/null || true
+
+    # Remove build cache
+    log "  Removing build cache..."
+    docker builder prune -af 2>/dev/null || true
+
+    # Remove unused networks
+    log "  Removing unused networks..."
+    docker network prune -f 2>/dev/null || true
+
+    # Report disk space recovered
+    log "  Docker cleanup complete"
+else
+    log "  Docker not available, skipping cleanup"
+fi
+
+# Step 4: Clean up Homebrew
+log "Cleaning up Homebrew..."
+if command -v brew &> /dev/null; then
+    brew cleanup -s 2>/dev/null || true
+    log "  Homebrew cleanup complete"
+fi
+
+# Step 5: Clean up old build directories
+log "Cleaning up old build directories..."
+BUILDS_PATH="{{ buildkite_builds_path }}"
+if [ -d "$BUILDS_PATH" ]; then
+    # Remove build directories older than 7 days
+    find "$BUILDS_PATH" -type d -mtime +7 -mindepth 2 -maxdepth 2 -exec rm -rf {} \; 2>/dev/null || true
+    log "  Old build directories cleaned"
+fi
+
+# Step 6: Run Ansible maintenance playbook (updates packages)
+log "Running Ansible maintenance playbook..."
+if [ -f "$ANSIBLE_WORKDIR/playbooks/maintenance.yml" ]; then
+    cd "$ANSIBLE_WORKDIR"
+    $HOMEBREW_PREFIX/bin/ansible-playbook playbooks/maintenance.yml \
+        --vault-password-file "$VAULT_PASSWORD_FILE" \
+        --connection=local \
+        --inventory localhost, \
+        -e "ansible_python_interpreter=$HOMEBREW_PREFIX/bin/python3" \
+        >> "$LOG_FILE" 2>&1 || log "WARNING: Ansible maintenance playbook had errors"
+    log "  Ansible maintenance complete"
+else
+    log "  Maintenance playbook not found, skipping"
+fi
+
+# Step 7: Report disk usage
+log "Disk usage after cleanup:"
+df -h / | tee -a "$LOG_FILE"
+
+# Step 8: Reboot
+log "Maintenance complete. Rebooting in 30 seconds..."
+log "=========================================="
+
+# Give time for log to be written
+sleep 5
+
+# Schedule reboot
+sudo shutdown -r +1 "Nightly maintenance reboot" 2>/dev/null || sudo reboot

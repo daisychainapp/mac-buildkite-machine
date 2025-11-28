@@ -1,0 +1,65 @@
+---
+# Docker role - install and configure Docker Desktop
+
+- name: Check if Docker Desktop is installed
+  ansible.builtin.stat:
+    path: /Applications/Docker.app
+  register: docker_app
+
+- name: Install Docker Desktop via Homebrew Cask
+  community.general.homebrew_cask:
+    name: docker
+    state: present
+    greedy: true
+  when: not docker_app.stat.exists
+
+- name: Ensure Docker settings directory exists
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/Library/Group Containers/group.com.docker"
+    state: directory
+    mode: '0755'
+
+- name: Configure Docker Desktop settings
+  ansible.builtin.template:
+    src: settings.json.j2
+    dest: "{{ ansible_env.HOME }}/Library/Group Containers/group.com.docker/settings.json"
+    mode: '0644'
+  notify: restart docker
+
+- name: Check if Docker is running
+  ansible.builtin.command: docker info
+  register: docker_info
+  changed_when: false
+  failed_when: false
+
+- name: Start Docker Desktop if not running
+  ansible.builtin.command: open -a Docker
+  when: docker_info.rc != 0
+  register: docker_start
+  changed_when: docker_start.rc == 0
+
+- name: Wait for Docker to be ready
+  ansible.builtin.command: docker info
+  register: docker_ready
+  until: docker_ready.rc == 0
+  retries: 30
+  delay: 5
+  changed_when: false
+  when: docker_info.rc != 0
+
+- name: Configure Docker to start on login
+  ansible.builtin.command: >
+    osascript -e 'tell application "System Events"
+      if not (exists login item "Docker") then
+        make login item at end with properties {path:"/Applications/Docker.app", hidden:true}
+      end if
+    end tell'
+  register: docker_login_item
+  changed_when: "'login item' in docker_login_item.stdout"
+  failed_when: false
+
+- name: Verify Docker is functional
+  ansible.builtin.command: docker run --rm hello-world
+  register: docker_hello
+  changed_when: false
+  failed_when: docker_hello.rc != 0

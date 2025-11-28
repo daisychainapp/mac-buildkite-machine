@@ -1,0 +1,30 @@
+#!/bin/bash
+# Buildkite environment hook
+# Managed by Ansible - do not edit manually
+
+set -euo pipefail
+
+# Ensure Homebrew is in PATH
+export PATH="{{ homebrew_prefix }}/bin:{{ homebrew_prefix }}/sbin:$PATH"
+
+# Docker configuration
+export DOCKER_HOST="unix://$HOME/.docker/run/docker.sock"
+export DOCKER_BUILDKIT=1
+export COMPOSE_DOCKER_CLI_BUILD=1
+
+# Git configuration
+export GIT_TERMINAL_PROMPT=0
+
+# AWS region (if using AWS)
+# export AWS_DEFAULT_REGION="us-east-1"
+
+# Add any additional environment variables below
+# These will be available to all Buildkite jobs
+
+# Example: NPM token
+# export NPM_TOKEN="${BUILDKITE_PLUGIN_DOCKER_ENVIRONMENT_NPM_TOKEN:-}"
+
+# Log environment for debugging (optional - remove in production)
+# echo "--- :gear: Build environment"
+# echo "PATH: $PATH"
+# echo "DOCKER_HOST: $DOCKER_HOST"

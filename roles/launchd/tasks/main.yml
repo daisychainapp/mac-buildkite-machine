@@ -1,0 +1,74 @@
+---
+# Launchd role - install ansible-pull and maintenance services
+
+- name: Set Homebrew prefix fact
+  ansible.builtin.set_fact:
+    homebrew_prefix: "{{ '/opt/homebrew' if ansible_architecture == 'arm64' else '/usr/local' }}"
+
+# Ansible-pull service (runs every 30 minutes)
+- name: Deploy ansible-pull launchd plist
+  ansible.builtin.template:
+    src: com.internal.ansible-pull.plist.j2
+    dest: /Library/LaunchDaemons/com.internal.ansible-pull.plist
+    mode: '0644'
+  become: true
+  notify: reload ansible-pull service
+
+- name: Load ansible-pull service
+  ansible.builtin.command: launchctl load /Library/LaunchDaemons/com.internal.ansible-pull.plist
+  become: true
+  register: launchctl_load
+  changed_when: launchctl_load.rc == 0
+  failed_when: false
+
+# Nightly maintenance service (runs at 3 AM)
+- name: Deploy nightly maintenance script
+  ansible.builtin.template:
+    src: nightly-maintenance.sh.j2
+    dest: /usr/local/bin/nightly-maintenance.sh
+    mode: '0755'
+  become: true
+
+- name: Deploy nightly maintenance launchd plist
+  ansible.builtin.template:
+    src: com.internal.nightly-maintenance.plist.j2
+    dest: /Library/LaunchDaemons/com.internal.nightly-maintenance.plist
+    mode: '0644'
+  become: true
+  notify: reload nightly maintenance service
+
+- name: Load nightly maintenance service
+  ansible.builtin.command: launchctl load /Library/LaunchDaemons/com.internal.nightly-maintenance.plist
+  become: true
+  register: launchctl_load_maint
+  changed_when: launchctl_load_maint.rc == 0
+  failed_when: false
+
+# Weekly Docker deep clean (Sundays at 4 AM)
+- name: Deploy weekly Docker cleanup launchd plist
+  ansible.builtin.template:
+    src: com.internal.docker-weekly-clean.plist.j2
+    dest: /Library/LaunchDaemons/com.internal.docker-weekly-clean.plist
+    mode: '0644'
+  become: true
+
+- name: Load weekly Docker cleanup service
+  ansible.builtin.command: launchctl load /Library/LaunchDaemons/com.internal.docker-weekly-clean.plist
+  become: true
+  register: launchctl_load_docker
+  changed_when: launchctl_load_docker.rc == 0
+  failed_when: false
+
+# Verify services are loaded
+- name: List loaded com.internal services
+  ansible.builtin.command: launchctl list
+  register: launchctl_list
+  changed_when: false
+
+- name: Display loaded services
+  ansible.builtin.debug:
+    msg: |
+      Loaded services:
+      - ansible-pull: {{ 'com.internal.ansible-pull' in launchctl_list.stdout }}
+      - nightly-maintenance: {{ 'com.internal.nightly-maintenance' in launchctl_list.stdout }}
+      - docker-weekly-clean: {{ 'com.internal.docker-weekly-clean' in launchctl_list.stdout }}

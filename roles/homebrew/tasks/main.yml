@@ -1,0 +1,52 @@
+---
+# Homebrew role - manage Homebrew and packages
+
+- name: Check if Homebrew is installed
+  ansible.builtin.stat:
+    path: /opt/homebrew/bin/brew
+  register: homebrew_arm
+
+- name: Check if Homebrew is installed (Intel path)
+  ansible.builtin.stat:
+    path: /usr/local/bin/brew
+  register: homebrew_intel
+  when: not homebrew_arm.stat.exists
+
+- name: Set Homebrew path fact
+  ansible.builtin.set_fact:
+    homebrew_prefix: "{{ '/opt/homebrew' if homebrew_arm.stat.exists else '/usr/local' }}"
+
+- name: Fail if Homebrew is not installed
+  ansible.builtin.fail:
+    msg: "Homebrew is not installed. Run the bootstrap script first."
+  when: not homebrew_arm.stat.exists and not (homebrew_intel.stat.exists | default(false))
+
+- name: Update Homebrew
+  community.general.homebrew:
+    update_homebrew: true
+  register: brew_update
+  changed_when: brew_update.changed
+  ignore_errors: true
+
+- name: Add Buildkite tap
+  community.general.homebrew_tap:
+    name: buildkite/buildkite
+    state: present
+
+- name: Install Homebrew packages
+  community.general.homebrew:
+    name: "{{ homebrew_packages }}"
+    state: present
+
+- name: Install Homebrew cask packages
+  community.general.homebrew_cask:
+    name: "{{ item }}"
+    state: present
+    greedy: true  # Allow upgrades
+  loop: "{{ homebrew_cask_packages }}"
+  ignore_errors: true  # Casks can fail if already installed differently
+
+- name: Install Buildkite agent via Homebrew
+  community.general.homebrew:
+    name: buildkite/buildkite/buildkite-agent
+    state: present

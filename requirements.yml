@@ -1,0 +1,20 @@
+---
+# Ansible Galaxy requirements
+# Install with: ansible-galaxy install -r requirements.yml
+
+collections:
+  # AWS integration for Secrets Manager (optional)
+  - name: amazon.aws
+    version: ">=7.0.0"
+
+  # Community general modules
+  - name: community.general
+    version: ">=8.0.0"
+
+roles:
+  # Jeff Geerling's excellent macOS roles
+  - name: geerlingguy.mac.homebrew
+    version: "5.0.0"
+
+  - name: geerlingguy.mac.dock
+    version: "5.0.0"
