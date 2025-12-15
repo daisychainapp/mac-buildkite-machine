@@ -61,7 +61,12 @@ fi
 # Keep sudo alive in background
 while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
 
-# Step 1: Install Xcode Command Line Tools
+# Step 1: Enable Screen Sharing for remote admin
+log_info "Enabling Screen Sharing..."
+sudo launchctl load -w /System/Library/LaunchDaemons/com.apple.screensharing.plist 2>/dev/null || true
+log_info "Screen Sharing: OK"
+
+# Step 2: Install Xcode Command Line Tools
 log_info "Checking Xcode Command Line Tools..."
 if ! xcode-select -p &>/dev/null; then
     log_info "Installing Xcode Command Line Tools..."

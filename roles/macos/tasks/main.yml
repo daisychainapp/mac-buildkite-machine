@@ -49,6 +49,15 @@
   ansible.builtin.command: defaults -currentHost write com.apple.screensaver idleTime 0
   changed_when: true
 
+# Speed up keyboard repeat rate
+- name: Set fast key repeat rate
+  ansible.builtin.command: defaults write NSGlobalDomain KeyRepeat -int 1
+  changed_when: true
+
+- name: Set short initial key repeat delay
+  ansible.builtin.command: defaults write NSGlobalDomain InitialKeyRepeat -int 10
+  changed_when: true
+
 # Software updates - security only, no major upgrades
 - name: Enable automatic security updates
   ansible.builtin.command: >
@@ -97,6 +106,13 @@
 # SSH access for remote management
 - name: Enable SSH (Remote Login)
   ansible.builtin.command: systemsetup -setremotelogin on
+  become: true
+  changed_when: true
+  ignore_errors: true
+
+# Screen Sharing for remote admin (VNC)
+- name: Enable Screen Sharing
+  ansible.builtin.command: launchctl load -w /System/Library/LaunchDaemons/com.apple.screensharing.plist
   become: true
   changed_when: true
   ignore_errors: true
