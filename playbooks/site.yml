@@ -10,7 +10,7 @@
 
   vars_files:
     - ../group_vars/all.yml
-    - ../group_vars/vault.yml
+    - ../group_vars/vault.yml  # Copy from vault.yml.example and encrypt
 
   pre_tasks:
     - name: Display target machine info

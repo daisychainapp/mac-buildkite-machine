@@ -63,6 +63,12 @@ Add the **public key** to GitHub:
 
 ## Step 4: Configure Secrets
 
+Copy the example vault file and fill in your secrets:
+
+```bash
+cp group_vars/vault.yml.example group_vars/vault.yml
+```
+
 Edit `group_vars/vault.yml` with your actual secrets:
 
 ```yaml

@@ -32,6 +32,15 @@ homebrew_packages:
 
 homebrew_cask_packages:
   - docker
+  - google-chrome
+
+# Pre-installed apps to remove (not needed for CI)
+apps_to_remove:
+  - Keynote.app
+  - Numbers.app
+  - Pages.app
+  - GarageBand.app
+  - iMovie.app
 
 # Nightly maintenance settings
 maintenance_hour: 3

@@ -1,6 +1,15 @@
 ---
 # macOS role - system settings for unattended operation
 
+# Remove pre-installed apps not needed for CI
+- name: Remove unnecessary pre-installed apps
+  ansible.builtin.file:
+    path: "/Applications/{{ item }}"
+    state: absent
+  loop: "{{ apps_to_remove }}"
+  become: true
+  ignore_errors: true
+
 # Prevent sleep - critical for build machines
 - name: Disable system sleep
   ansible.builtin.command: pmset -a sleep 0

@@ -2,10 +2,11 @@
 *.retry
 .ansible_fact_cache/
 
-# Secrets (vault.yml should be encrypted, but be safe)
+# Secrets
 *.vault-pass
 deploy_key
 deploy_key.pub
+group_vars/vault.yml
 
 # macOS
 .DS_Store

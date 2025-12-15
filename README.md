@@ -37,7 +37,8 @@ ssh-keygen -t ed25519 -C "mac-buildkite-deploy" -f deploy_key -N ""
 # 3. Paste contents of deploy_key.pub
 # 4. Check "Allow write access" is OFF (read-only)
 
-# Edit vault.yml with your secrets
+# Copy the example vault file and add your secrets
+cp group_vars/vault.yml.example group_vars/vault.yml
 vim group_vars/vault.yml
 # Set:
 #   vault_buildkite_agent_token: "your-token-from-buildkite"
