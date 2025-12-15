@@ -39,10 +39,27 @@ if [[ "$(uname)" != "Darwin" ]]; then
     exit 1
 fi
 
+# Don't run as root
+if [[ "$EUID" -eq 0 ]]; then
+    log_error "Do not run this script with sudo. Run as a normal user."
+    log_error "The script will ask for sudo password when needed."
+    exit 1
+fi
+
 echo "=============================================="
 echo "  macOS Build Machine Bootstrap"
 echo "=============================================="
 echo ""
+
+# Cache sudo credentials upfront
+log_info "This script requires sudo access for some operations."
+if ! sudo -v; then
+    log_error "Failed to obtain sudo access"
+    exit 1
+fi
+
+# Keep sudo alive in background
+while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
 
 # Step 1: Install Xcode Command Line Tools
 log_info "Checking Xcode Command Line Tools..."
@@ -68,7 +85,7 @@ log_info "Xcode Command Line Tools: OK"
 log_info "Checking Homebrew..."
 if ! command -v brew &>/dev/null; then
     log_info "Installing Homebrew..."
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
     # Add Homebrew to PATH for this session
     if [[ -f /opt/homebrew/bin/brew ]]; then
