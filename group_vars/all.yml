@@ -2,7 +2,7 @@
 # Global variables for all hosts
 
 # Git repository settings (for ansible-pull)
-ansible_pull_repo_url: "git@github.com:YOUR_ORG/mac-build.git"
+ansible_pull_repo_url: "git@github.com:daisychainapp/mac-buildkite-machine.git"
 ansible_pull_branch: "main"
 ansible_pull_workdir: "/opt/mac-build"
 ansible_pull_interval: 1800  # 30 minutes in seconds

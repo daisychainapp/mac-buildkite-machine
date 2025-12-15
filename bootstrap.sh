@@ -3,14 +3,14 @@
 # Bootstrap script for macOS build machines
 # Run this once on a fresh Mac to initialize configuration management
 #
-# Usage: curl -fsSL https://raw.githubusercontent.com/YOUR_ORG/mac-build/main/bootstrap.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/daisychainapp/mac-buildkite-machine/main/bootstrap.sh | bash
 #    or: ./bootstrap.sh
 #
 
 set -euo pipefail
 
-# Configuration - update these for your environment
-REPO_URL="${MAC_BUILD_REPO:-git@github.com:YOUR_ORG/mac-build.git}"
+# Configuration
+REPO_URL="${MAC_BUILD_REPO:-git@github.com:daisychainapp/mac-buildkite-machine.git}"
 REPO_BRANCH="${MAC_BUILD_BRANCH:-main}"
 LOCAL_REPO="/opt/mac-build"
 VAULT_PASSWORD_FILE="/etc/ansible/.vault-pass"

@@ -1,6 +1,6 @@
 # macOS Build Machine Configuration
 
-Ansible-based configuration management for macOS Buildkite CI agents.
+Ansible-based configuration management for macOS Buildkite CI agents (ARM Macs).
 
 ## Features
 
@@ -11,65 +11,82 @@ Ansible-based configuration management for macOS Buildkite CI agents.
 - **Unattended operation** - Sleep disabled, auto-restart after power failure
 - **Log rotation** - Prevents disk space issues
 
+## Prerequisites
+
+Before bootstrapping a Mac, you need:
+
+1. **Buildkite Agent Token** - Get from [Buildkite](https://buildkite.com) → Organization Settings → Agents → Reveal Agent Token
+2. **GitHub Deploy Key** - For ansible-pull to access this repo (see below)
+3. **Ansible Vault Password** - Create a strong password and store it securely
+
 ## Quick Start
 
-### 1. Prepare the repository
+### 1. Configure this repository (one-time setup)
 
 ```bash
 # Clone this repo
-git clone git@github.com:YOUR_ORG/mac-build.git
-cd mac-build
+git clone git@github.com:daisychainapp/mac-buildkite-machine.git
+cd mac-buildkite-machine
 
-# Update configuration
-vim group_vars/all.yml  # Set your repo URL, agent count, etc.
+# Generate a deploy key for ansible-pull
+ssh-keygen -t ed25519 -C "mac-buildkite-deploy" -f deploy_key -N ""
 
-# Add your Buildkite token and secrets
+# Add the PUBLIC key to GitHub:
+# 1. Go to: https://github.com/daisychainapp/mac-buildkite-machine/settings/keys
+# 2. Click "Add deploy key"
+# 3. Paste contents of deploy_key.pub
+# 4. Check "Allow write access" is OFF (read-only)
+
+# Edit vault.yml with your secrets
 vim group_vars/vault.yml
+# Set:
+#   vault_buildkite_agent_token: "your-token-from-buildkite"
+#   vault_github_deploy_key: |
+#     (paste entire contents of deploy_key file)
+
+# Encrypt the vault
 ansible-vault encrypt group_vars/vault.yml
-# Enter a password when prompted (save this securely!)
+# Enter a password - SAVE THIS PASSWORD SECURELY
+
+# Update group_vars/all.yml
+vim group_vars/all.yml
+# Change ansible_pull_repo_url to: git@github.com:daisychainapp/mac-buildkite-machine.git
 
 # Commit and push
 git add -A
-git commit -m "Initial configuration"
+git commit -m "Configure for daisychainapp"
 git push
 ```
 
 ### 2. Bootstrap a new Mac
 
-```bash
-# On the new Mac, run:
-curl -fsSL https://raw.githubusercontent.com/YOUR_ORG/mac-build/main/bootstrap.sh | bash
+On the new Mac:
 
-# Or clone and run locally:
-git clone git@github.com:YOUR_ORG/mac-build.git /opt/mac-build
-cd /opt/mac-build
-./bootstrap.sh
+1. Complete initial macOS setup (create an admin user)
+2. Open Terminal and run:
+
+```bash
+# Set your repo URL and run bootstrap
+export MAC_BUILD_REPO="git@github.com:daisychainapp/mac-buildkite-machine.git"
+curl -fsSL https://raw.githubusercontent.com/daisychainapp/mac-buildkite-machine/main/bootstrap.sh | bash
 ```
 
-The bootstrap script will:
-1. Install Xcode Command Line Tools
-2. Install Homebrew
-3. Install Ansible
-4. Clone this repository
-5. Run the initial configuration
-6. Set up auto-updates via launchd
+The script will prompt you for:
+- **Deploy key** - Paste the private key (contents of `deploy_key` file)
+- **Vault password** - The password you used with `ansible-vault encrypt`
 
-### 3. GitHub Deploy Key Setup
+### 3. Verify
 
-For ansible-pull to work, each machine needs access to this repository:
+After bootstrap completes:
 
 ```bash
-# Generate a deploy key (do this once)
-ssh-keygen -t ed25519 -C "mac-build-deploy-key" -f deploy_key -N ""
+# Check Buildkite agents are running
+pgrep -f buildkite-agent
 
-# Add deploy_key.pub to GitHub:
-# Repository → Settings → Deploy keys → Add deploy key
+# Check agent logs
+tail -f /var/log/buildkite-agent-1.log
 
-# Add the private key to vault.yml:
-vault_github_deploy_key: |
-  -----BEGIN OPENSSH PRIVATE KEY-----
-  ... (contents of deploy_key)
-  -----END OPENSSH PRIVATE KEY-----
+# Verify in Buildkite dashboard that agents appear
 ```
 
 ## Configuration
@@ -159,20 +176,38 @@ done
 ## Directory Structure
 
 ```
-/opt/mac-build/              # This repository
-/opt/homebrew/               # Homebrew (ARM) or /usr/local (Intel)
-  etc/buildkite-agent/       # Buildkite config
-    buildkite-agent.cfg
-    hooks/
+/opt/mac-build/                              # This repository (cloned by bootstrap)
+/opt/homebrew/                               # Homebrew prefix (ARM Macs)
+  bin/buildkite-agent                        # Buildkite agent binary
+  etc/buildkite-agent/
+    buildkite-agent.cfg                      # Agent configuration
+    hooks/                                   # Buildkite hooks (environment, pre-exit)
     secrets/
-  var/buildkite-agent/       # Build artifacts
-    builds/
-    plugins/
-/etc/ansible/.vault-pass     # Vault password file
-/var/log/                    # Logs
-  ansible-pull.log
-  buildkite-agent-*.log
-  nightly-maintenance.log
+      build-secrets.env                      # Optional build secrets
+  var/buildkite-agent/
+    builds/                                  # Build checkouts
+    plugins/                                 # Buildkite plugins
+/etc/ansible/.vault-pass                     # Vault password (root-only, mode 0600)
+/usr/local/bin/
+  nightly-maintenance.sh                     # Nightly cleanup script
+  check-disk-space.sh                        # Hourly disk check
+/var/log/
+  ansible-pull.log                           # Auto-update logs
+  ansible-pull.error.log
+  ansible-last-run.json                      # Last successful run metadata
+  buildkite-agent-1.log                      # Agent 1 stdout
+  buildkite-agent-1.error.log                # Agent 1 stderr
+  buildkite-agent-2.log                      # Agent 2 stdout
+  buildkite-agent-3.log                      # Agent 3 stdout
+  nightly-maintenance.log                    # Maintenance logs
+  disk-check.log                             # Disk space warnings
+~/Library/LaunchAgents/
+  com.buildkite.buildkite-agent-*.plist      # Agent service definitions
+/Library/LaunchDaemons/
+  com.internal.ansible-pull.plist            # Auto-update service
+  com.internal.nightly-maintenance.plist     # Nightly maintenance service
+  com.internal.docker-weekly-clean.plist     # Weekly Docker cleanup
+  com.internal.disk-check.plist              # Hourly disk check
 ```
 
 ## Troubleshooting
@@ -213,7 +248,7 @@ tail -100 /var/log/ansible-pull.error.log
 ssh -T git@github.com
 
 # Run manually with verbose output
-ansible-pull -U git@github.com:YOUR_ORG/mac-build.git \
+ansible-pull -U git@github.com:daisychainapp/mac-buildkite-machine.git \
   -C main -d /opt/mac-build \
   --vault-password-file /etc/ansible/.vault-pass \
   -i localhost, playbooks/site.yml -vvv

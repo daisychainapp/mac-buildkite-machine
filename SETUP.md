@@ -4,30 +4,27 @@ Follow these steps to deploy the macOS build machine configuration.
 
 ## Prerequisites
 
-- A GitHub repository to host this code (private recommended)
 - Your Buildkite agent token (from Buildkite → Agents → Reveal Agent Token)
-- One or more macOS machines to configure
+- One or more macOS machines (ARM/Apple Silicon) to configure
 
 ---
 
-## Step 1: Create GitHub Repository
+## Step 1: Clone This Repository
 
 ```bash
-# Create a new private repo on GitHub, then:
-cd /Users/nathanwoodhull/work/mac-build
-git init
-git remote add origin git@github.com:YOUR_ORG/mac-build.git
+git clone git@github.com:daisychainapp/mac-buildkite-machine.git
+cd mac-buildkite-machine
 ```
 
 ---
 
 ## Step 2: Update Configuration
 
-Edit `group_vars/all.yml` and update these values:
+Edit `group_vars/all.yml` and verify these values:
 
 ```yaml
-# Change this to your repository URL
-ansible_pull_repo_url: "git@github.com:YOUR_ORG/mac-build.git"
+# Repository URL (already configured)
+ansible_pull_repo_url: "git@github.com:daisychainapp/mac-buildkite-machine.git"
 
 # Adjust agent count if needed (default is 3)
 buildkite_agent_count: 3
@@ -99,20 +96,7 @@ ansible-vault edit group_vars/vault.yml
 
 ---
 
-## Step 6: Update Bootstrap Script
-
-Edit `bootstrap.sh` and update the repository URL:
-
-```bash
-# Find this line near the top:
-REPO_URL="${MAC_BUILD_REPO:-git@github.com:YOUR_ORG/mac-build.git}"
-
-# Change YOUR_ORG to your actual organization/username
-```
-
----
-
-## Step 7: Commit and Push
+## Step 6: Commit and Push
 
 ```bash
 # Remove the generated deploy key files (don't commit these!)
@@ -126,20 +110,20 @@ git push -u origin main
 
 ---
 
-## Step 8: Bootstrap First Mac
+## Step 7: Bootstrap First Mac
 
 On your first macOS build machine:
 
 ### Option A: Direct download (easiest)
 ```bash
 # Download and run bootstrap script
-curl -fsSL https://raw.githubusercontent.com/YOUR_ORG/mac-build/main/bootstrap.sh | bash
+curl -fsSL https://raw.githubusercontent.com/daisychainapp/mac-buildkite-machine/main/bootstrap.sh | bash
 ```
 
 ### Option B: Clone first (if SSH isn't set up)
 ```bash
 # Clone via HTTPS first
-git clone https://github.com/YOUR_ORG/mac-build.git /tmp/mac-build
+git clone https://github.com/daisychainapp/mac-buildkite-machine.git /tmp/mac-build
 cd /tmp/mac-build
 ./bootstrap.sh
 ```
@@ -150,7 +134,7 @@ The bootstrap script will prompt you for:
 
 ---
 
-## Step 9: Verify Installation
+## Step 8: Verify Installation
 
 After bootstrap completes, verify everything is working:
 
@@ -170,14 +154,14 @@ launchctl list | grep com.internal
 cat /var/log/ansible-last-run.json
 
 # Check Buildkite dashboard
-# Your agents should appear at: https://buildkite.com/organizations/YOUR_ORG/agents
+# Your agents should appear at: https://buildkite.com/organizations/daisychainapp/agents
 ```
 
 ---
 
-## Step 10: Bootstrap Additional Macs
+## Step 9: Bootstrap Additional Macs
 
-Repeat Step 8 for each additional Mac. They will all:
+Repeat Step 7 for each additional Mac. They will all:
 - Pull the same configuration from GitHub
 - Register with Buildkite using the same token
 - Self-update every 30 minutes
