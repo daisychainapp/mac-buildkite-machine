@@ -33,6 +33,7 @@ homebrew_packages:
 homebrew_cask_packages:
   - docker
   - google-chrome
+  - iterm2
 
 # Pre-installed apps to remove (not needed for CI)
 apps_to_remove:
