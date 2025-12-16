@@ -31,14 +31,11 @@ disconnect-after-idle-timeout=0
 # Disable PTY allocation (prevents issues with non-interactive builds)
 no-pty=true
 
-# Acquire jobs with File locks to prevent race conditions
-acquire-job=file-lock
-
 # Shell (use bash for consistency)
 shell="/bin/bash -e -c"
 
-# Health check (port offset by spawn number)
-health-check-addr="127.0.0.1:808%spawn"
+# Health check (port offset by spawn number, %n = spawn number)
+health-check-addr="127.0.0.1:808%n"
 
 # Logging
 debug=false
