@@ -47,9 +47,10 @@ read_ssh_key() {
     local key=""
     local line
 
-    echo "Paste your deploy key below (the private key content)."
-    echo "The key should start with '-----BEGIN' and end with '-----END...PRIVATE KEY-----'"
-    echo ""
+    # Send prompts to stderr so they don't get captured in command substitution
+    echo "Paste your deploy key below (the private key content)." >&2
+    echo "The key should start with '-----BEGIN' and end with '-----END...PRIVATE KEY-----'" >&2
+    echo "" >&2
 
     while IFS= read -r line; do
         key+="$line"$'\n'
@@ -59,7 +60,8 @@ read_ssh_key() {
         fi
     done
 
-    echo "$key"
+    # Output only the key to stdout
+    printf '%s' "$key"
 }
 
 # Check if running on macOS
@@ -302,12 +304,12 @@ fi
 
 log_info "Repository: OK ($LOCAL_REPO)"
 
-# Step 6: Install Ansible Galaxy requirements
-log_info "Installing Ansible Galaxy requirements..."
+# Step 6: Install Ansible Galaxy requirements (collections)
+log_info "Installing Ansible Galaxy collections..."
 cd "$LOCAL_REPO"
-ansible-galaxy install -r requirements.yml --force
+ansible-galaxy collection install -r requirements.yml --force
 
-log_info "Galaxy requirements: OK"
+log_info "Galaxy collections: OK"
 
 # Step 7: Set up Ansible Vault password
 log_info "Setting up Ansible Vault..."
