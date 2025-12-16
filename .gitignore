@@ -2,11 +2,11 @@
 *.retry
 .ansible_fact_cache/
 
-# Secrets
+# Secrets (unencrypted)
 *.vault-pass
 deploy_key
 deploy_key.pub
-group_vars/vault.yml
+# Note: group_vars/vault.yml is NOT ignored - it should be committed after encrypting with ansible-vault
 
 # macOS
 .DS_Store
