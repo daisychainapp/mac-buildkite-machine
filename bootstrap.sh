@@ -189,19 +189,63 @@ if [[ "$REPO_URL" == git@* ]]; then
     log_info "Setting up SSH for GitHub..."
 
     SSH_DIR="$HOME/.ssh"
+    DEPLOY_KEY_FILE="$SSH_DIR/mac-build-deploy"
     mkdir -p "$SSH_DIR"
     chmod 700 "$SSH_DIR"
 
-    # Check if we need to set up deploy key
-    if [[ ! -f "$SSH_DIR/mac-build-deploy" ]]; then
-        echo ""
-        log_warn "GitHub deploy key not found."
-        log_warn "Please paste your deploy key private key (the one added to GitHub)."
-        log_warn "Press Ctrl+D when done:"
+    # Check if existing key is valid
+    NEED_KEY=false
+    if [[ -f "$DEPLOY_KEY_FILE" ]]; then
+        EXISTING_KEY=$(cat "$DEPLOY_KEY_FILE")
+        if ! validate_ssh_key "$EXISTING_KEY"; then
+            log_warn "Existing deploy key at $DEPLOY_KEY_FILE appears invalid."
+            log_warn "Removing invalid key file..."
+            rm -f "$DEPLOY_KEY_FILE"
+            NEED_KEY=true
+        fi
+    else
+        NEED_KEY=true
+    fi
+
+    if [[ "$NEED_KEY" == "true" ]]; then
         echo ""
 
-        cat > "$SSH_DIR/mac-build-deploy"
-        chmod 600 "$SSH_DIR/mac-build-deploy"
+        # Check for non-interactive sources first
+        if [[ -n "${MAC_BUILD_DEPLOY_KEY:-}" ]]; then
+            # Key provided via environment variable
+            log_info "Using deploy key from MAC_BUILD_DEPLOY_KEY environment variable..."
+            DEPLOY_KEY="$MAC_BUILD_DEPLOY_KEY"
+        elif [[ -n "${MAC_BUILD_DEPLOY_KEY_FILE:-}" ]] && [[ -f "${MAC_BUILD_DEPLOY_KEY_FILE}" ]]; then
+            # Key provided via file path
+            log_info "Reading deploy key from $MAC_BUILD_DEPLOY_KEY_FILE..."
+            DEPLOY_KEY=$(cat "$MAC_BUILD_DEPLOY_KEY_FILE")
+        elif [[ -t 0 ]]; then
+            # Interactive terminal - prompt user
+            log_warn "GitHub deploy key not found."
+            echo ""
+            DEPLOY_KEY=$(read_ssh_key)
+        else
+            # Non-interactive and no key provided
+            log_error "No deploy key available and not running interactively."
+            log_error "Provide the key via one of these methods:"
+            log_error "  1. Environment variable: export MAC_BUILD_DEPLOY_KEY=\"\$(cat /path/to/key)\""
+            log_error "  2. File path: export MAC_BUILD_DEPLOY_KEY_FILE=/path/to/key"
+            log_error "  3. Run the script interactively (not piped)"
+            exit 1
+        fi
+
+        # Validate the key
+        if ! validate_ssh_key "$DEPLOY_KEY"; then
+            log_error "Invalid SSH private key format."
+            log_error "The key should start with '-----BEGIN ... PRIVATE KEY-----'"
+            log_error "and end with '-----END ... PRIVATE KEY-----'"
+            exit 1
+        fi
+
+        # Save the key
+        echo "$DEPLOY_KEY" > "$DEPLOY_KEY_FILE"
+        chmod 600 "$DEPLOY_KEY_FILE"
+        log_info "Deploy key saved to $DEPLOY_KEY_FILE"
 
         # Add to SSH config
         if ! grep -q "mac-build-deploy" "$SSH_DIR/config" 2>/dev/null; then
@@ -212,15 +256,29 @@ Host github.com
     IdentityFile ~/.ssh/mac-build-deploy
     IdentitiesOnly yes
 EOF
+            chmod 600 "$SSH_DIR/config"
         fi
 
         log_info "Deploy key configured"
+    else
+        log_info "Valid deploy key found at $DEPLOY_KEY_FILE"
     fi
 
     # Test GitHub connection
     log_info "Testing GitHub SSH connection..."
-    if ! ssh -T git@github.com 2>&1 | grep -q "successfully authenticated"; then
-        log_warn "GitHub SSH test did not return expected output. This may be OK."
+    SSH_TEST_OUTPUT=$(ssh -T git@github.com 2>&1 || true)
+    if echo "$SSH_TEST_OUTPUT" | grep -q "successfully authenticated"; then
+        log_info "GitHub SSH: OK"
+    else
+        log_warn "GitHub SSH test did not return expected output."
+        log_warn "Output: $SSH_TEST_OUTPUT"
+        echo ""
+        read -p "Continue anyway? [y/N] " -n 1 -r
+        echo ""
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            log_error "Aborting. Please check your deploy key and try again."
+            exit 1
+        fi
     fi
 fi
 
