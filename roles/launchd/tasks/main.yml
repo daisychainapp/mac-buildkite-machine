@@ -3,7 +3,7 @@
 
 - name: Set Homebrew prefix fact
   ansible.builtin.set_fact:
-    homebrew_prefix: "{{ '/opt/homebrew' if ansible_architecture == 'arm64' else '/usr/local' }}"
+    homebrew_prefix: "{{ '/opt/homebrew' if ansible_facts['architecture'] == 'arm64' else '/usr/local' }}"
 
 # Ansible-pull service (runs every 30 minutes)
 - name: Deploy ansible-pull launchd plist

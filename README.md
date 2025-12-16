@@ -4,7 +4,7 @@ Ansible-based configuration management for macOS Buildkite CI agents (ARM Macs).
 
 ## Features
 
-- **Docker Desktop** - Installed and configured for container-based builds
+- **Docker Desktop** - Installed (requires manual configuration, see below)
 - **Buildkite Agent** - 3 concurrent agents per machine (configurable)
 - **Auto-updates** - Machines pull configuration from Git every 30 minutes
 - **Nightly maintenance** - Docker cleanup and reboot at 3 AM
@@ -74,7 +74,13 @@ On the new Mac:
    - System Settings → Users & Groups → Login Options → Automatic login → Select your user
    - Note: This option only appears when FileVault is disabled
 
-4. Open Terminal and run:
+4. **Complete Docker Desktop Setup** (after bootstrap):
+   - Open Docker Desktop manually the first time
+   - Go to Settings → General → Choose Virtual Machine Manager: **Docker VMM** (required for ARM)
+   - Accept the license agreement
+   - Wait for Docker to start successfully
+
+5. Open Terminal and run:
 
 ```bash
 # Download and run bootstrap interactively

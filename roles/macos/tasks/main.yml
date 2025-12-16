@@ -117,13 +117,6 @@
   changed_when: true
   ignore_errors: true
 
-# Set timezone
-- name: Set timezone to UTC for consistent builds
-  ansible.builtin.command: systemsetup -settimezone UTC
-  become: true
-  changed_when: true
-  ignore_errors: true
-
 # Disable Notification Center (prevents popups)
 - name: Disable Notification Center
   ansible.builtin.command: launchctl unload -w /System/Library/LaunchAgents/com.apple.notificationcenterui.plist

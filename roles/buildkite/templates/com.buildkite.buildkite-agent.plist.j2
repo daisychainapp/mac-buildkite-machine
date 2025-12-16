@@ -32,7 +32,7 @@
         <key>PATH</key>
         <string>{{ homebrew_prefix }}/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
         <key>HOME</key>
-        <string>{{ ansible_env.HOME }}</string>
+        <string>{{ ansible_facts['env']['HOME'] }}</string>
         <key>BUILDKITE_AGENT_SPAWN</key>
         <string>{{ agent_number }}</string>
     </dict>
