@@ -3,7 +3,7 @@
 
 - name: Set Homebrew prefix fact
   ansible.builtin.set_fact:
-    homebrew_prefix: "{{ '/opt/homebrew' if ansible_architecture == 'arm64' else '/usr/local' }}"
+    homebrew_prefix: "{{ '/opt/homebrew' if ansible_facts['architecture'] == 'arm64' else '/usr/local' }}"
 
 - name: Ensure Buildkite directories exist
   ansible.builtin.file:
@@ -38,14 +38,14 @@
 
 - name: Ensure LaunchAgents directory exists
   ansible.builtin.file:
-    path: "{{ ansible_env.HOME }}/Library/LaunchAgents"
+    path: "{{ ansible_facts['env']['HOME'] }}/Library/LaunchAgents"
     state: directory
     mode: '0755'
 
 - name: Deploy Buildkite agent launchd plists
   ansible.builtin.template:
     src: com.buildkite.buildkite-agent.plist.j2
-    dest: "{{ ansible_env.HOME }}/Library/LaunchAgents/com.buildkite.buildkite-agent-{{ item }}.plist"
+    dest: "{{ ansible_facts['env']['HOME'] }}/Library/LaunchAgents/com.buildkite.buildkite-agent-{{ item }}.plist"
     mode: '0644'
   loop: "{{ range(1, buildkite_agent_count + 1) | list }}"
   notify: restart buildkite agents
@@ -54,7 +54,7 @@
 
 - name: Load Buildkite agent services
   ansible.builtin.command: >
-    launchctl load {{ ansible_env.HOME }}/Library/LaunchAgents/com.buildkite.buildkite-agent-{{ item }}.plist
+    launchctl load {{ ansible_facts['env']['HOME'] }}/Library/LaunchAgents/com.buildkite.buildkite-agent-{{ item }}.plist
   loop: "{{ range(1, buildkite_agent_count + 1) | list }}"
   register: launchctl_load
   changed_when: launchctl_load.rc == 0
