@@ -96,20 +96,6 @@
   become: true
   changed_when: true
 
-# Disable Gatekeeper for easier CLI tool usage (optional - comment if security concern)
-- name: Allow apps from anywhere (disable Gatekeeper prompts)
-  ansible.builtin.command: spctl --master-disable
-  become: true
-  changed_when: true
-  ignore_errors: true
-
-# SSH access for remote management
-- name: Enable SSH (Remote Login)
-  ansible.builtin.command: systemsetup -setremotelogin on
-  become: true
-  changed_when: true
-  ignore_errors: true
-
 # Screen Sharing for remote admin (VNC)
 - name: Enable Screen Sharing
   ansible.builtin.command: launchctl load -w /System/Library/LaunchDaemons/com.apple.screensharing.plist
