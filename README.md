@@ -64,12 +64,22 @@ git push
 On the new Mac:
 
 1. Complete initial macOS setup (create an admin user)
-2. Open Terminal and run:
+
+2. **Disable FileVault** (required for auto-login and unattended reboots):
+   - System Settings → Privacy & Security → FileVault → Turn Off
+   - Or via terminal: `sudo fdesetup disable`
+   - Wait for decryption to complete before proceeding
+
+3. **Enable Auto-Login** (required for headless screen sharing after reboots):
+   - System Settings → Users & Groups → Login Options → Automatic login → Select your user
+   - Note: This option only appears when FileVault is disabled
+
+4. Open Terminal and run:
 
 ```bash
-# Set your repo URL and run bootstrap
-export MAC_BUILD_REPO="git@github.com:daisychainapp/mac-buildkite-machine.git"
-curl -fsSL https://raw.githubusercontent.com/daisychainapp/mac-buildkite-machine/main/bootstrap.sh | bash
+# Download and run bootstrap interactively
+curl -fsSL https://raw.githubusercontent.com/daisychainapp/mac-buildkite-machine/main/bootstrap.sh -o /tmp/bootstrap.sh
+bash /tmp/bootstrap.sh
 ```
 
 The script will prompt you for:
