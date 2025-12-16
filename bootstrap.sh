@@ -92,6 +92,25 @@ fi
 # Keep sudo alive in background
 while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
 
+# Set up passwordless sudo for ansible-pull (required for unattended operation)
+CURRENT_USER="$(whoami)"
+SUDOERS_FILE="/etc/sudoers.d/ansible-$CURRENT_USER"
+if [[ ! -f "$SUDOERS_FILE" ]]; then
+    log_info "Setting up passwordless sudo for ansible-pull..."
+    echo "$CURRENT_USER ALL=(ALL) NOPASSWD: ALL" | sudo tee "$SUDOERS_FILE" > /dev/null
+    sudo chmod 440 "$SUDOERS_FILE"
+    # Verify the sudoers file is valid
+    if sudo visudo -c -f "$SUDOERS_FILE" 2>/dev/null; then
+        log_info "Passwordless sudo: OK"
+    else
+        log_error "Invalid sudoers file created, removing..."
+        sudo rm -f "$SUDOERS_FILE"
+        log_warn "Passwordless sudo setup failed. ansible-pull may require manual intervention."
+    fi
+else
+    log_info "Passwordless sudo: OK (already configured)"
+fi
+
 # Step 1: Enable Screen Sharing for remote admin
 log_info "Enabling Screen Sharing..."
 sudo launchctl load -w /System/Library/LaunchDaemons/com.apple.screensharing.plist 2>/dev/null || true
