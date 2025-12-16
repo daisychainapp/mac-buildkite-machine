@@ -79,8 +79,8 @@ sudo pmset -a womp 1               # Wake on Magic Packet (Wake on LAN)
 sudo pmset -a autorestart 1        # Restart automatically after power failure
 log_info "Power management: OK (sleep disabled, auto-restart enabled)"
 
-# Step 1c: Enable auto-login for headless screen sharing
-log_info "Configuring auto-login for headless operation..."
+# Step 1c: Check auto-login for headless screen sharing
+log_info "Checking auto-login configuration..."
 CURRENT_USER="$(whoami)"
 
 # Check if FileVault is enabled (incompatible with auto-login)
@@ -89,61 +89,19 @@ if fdesetup status 2>/dev/null | grep -q "FileVault is On"; then
     log_warn "After any reboot, you'll need to enter the disk password manually."
     log_warn "To disable FileVault: sudo fdesetup disable"
 else
-    # Check if auto-login is already configured for this user
+    # Check if auto-login is already configured
     EXISTING_AUTOLOGIN=$(sudo defaults read /Library/Preferences/com.apple.loginwindow autoLoginUser 2>/dev/null || echo "")
 
-    if [[ "$EXISTING_AUTOLOGIN" == "$CURRENT_USER" ]] && [[ -f /etc/kcpassword ]]; then
-        log_info "Auto-login already configured for $CURRENT_USER"
+    if [[ -n "$EXISTING_AUTOLOGIN" ]]; then
+        log_info "Auto-login configured for: $EXISTING_AUTOLOGIN"
     else
         echo ""
-        log_warn "Auto-login is required for headless screen sharing after reboot."
-        log_warn "This will store an obfuscated (not encrypted) password in /etc/kcpassword."
+        log_warn "Auto-login is NOT configured."
+        log_warn "For headless operation, enable it manually:"
+        log_warn "  System Settings → Users & Groups → Login Options → Automatic login"
+        log_warn "  Select user: $CURRENT_USER"
         echo ""
-        echo -n "Enter password for user '$CURRENT_USER' to enable auto-login: "
-        read -s AUTOLOGIN_PASS
-        echo ""
-
-        # Set the auto-login user
-        sudo defaults write /Library/Preferences/com.apple.loginwindow autoLoginUser "$CURRENT_USER"
-
-        # Generate kcpassword file
-        # The kcpassword uses XOR obfuscation with a fixed key
-        generate_kcpassword() {
-            local password="$1"
-            local key=(125 137 82 35 210 188 221 234 163 185 31)
-            local key_len=${#key[@]}
-            local result=()
-            local i=0
-
-            # Password needs to be padded to multiple of 12 bytes
-            local pass_len=${#password}
-            local padded_len=$(( ((pass_len / 12) + 1) * 12 ))
-
-            for ((i = 0; i < padded_len; i++)); do
-                if [[ $i -lt $pass_len ]]; then
-                    local char="${password:$i:1}"
-                    local byte=$(printf '%d' "'$char")
-                else
-                    local byte=0
-                fi
-                local key_byte=${key[$((i % key_len))]}
-                local xored=$((byte ^ key_byte))
-                result+=("$xored")
-            done
-
-            # Write bytes to file
-            local hex=""
-            for byte in "${result[@]}"; do
-                hex+=$(printf '\\x%02x' "$byte")
-            done
-            echo -ne "$hex" | sudo tee /etc/kcpassword > /dev/null
-            sudo chmod 600 /etc/kcpassword
-        }
-
-        generate_kcpassword "$AUTOLOGIN_PASS"
-        unset AUTOLOGIN_PASS
-
-        log_info "Auto-login configured for $CURRENT_USER"
+        read -p "Press Enter to continue..."
     fi
 fi
 
