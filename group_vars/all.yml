@@ -10,8 +10,9 @@ ansible_pull_interval: 1800  # 30 minutes in seconds
 # Buildkite configuration
 buildkite_agent_count: 3
 buildkite_agent_tags:
-  - "queue=default"
+  - "queue=macos"
   - "os=macos"
+  - "arch=arm64"
 buildkite_agent_priority: 1
 buildkite_hooks_path: "/opt/homebrew/etc/buildkite-agent/hooks"
 buildkite_builds_path: "/opt/homebrew/var/buildkite-agent/builds"

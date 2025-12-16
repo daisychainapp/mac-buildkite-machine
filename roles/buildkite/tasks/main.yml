@@ -36,7 +36,7 @@
     dest: "{{ buildkite_hooks_path }}/pre-exit"
     mode: '0755'
 
-# Clean up old custom LaunchAgent plists (if migrating from custom plist approach)
+# Clean up old custom config (if migrating from custom plist approach)
 - name: Stop and remove old custom buildkite-agent plists
   ansible.builtin.shell: |
     for i in 1 2 3 4 5; do
@@ -49,6 +49,20 @@
   args:
     executable: /bin/bash
   changed_when: false
+
+- name: Remove old custom buildkite-agent log files
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /var/log/buildkite-agent-1.log
+    - /var/log/buildkite-agent-1.error.log
+    - /var/log/buildkite-agent-2.log
+    - /var/log/buildkite-agent-2.error.log
+    - /var/log/buildkite-agent-3.log
+    - /var/log/buildkite-agent-3.error.log
+  become: true
+  failed_when: false
 
 # Use brew services to manage the buildkite-agent
 - name: Stop any existing brew buildkite-agent service
