@@ -16,9 +16,9 @@
     - name: Display target machine info
       ansible.builtin.debug:
         msg: |
-          Configuring: {{ ansible_hostname }}
-          macOS: {{ ansible_distribution_version }}
-          Architecture: {{ ansible_architecture }}
+          Configuring: {{ ansible_facts['hostname'] }}
+          macOS: {{ ansible_facts['distribution_version'] }}
+          Architecture: {{ ansible_facts['architecture'] }}
 
   roles:
     - role: common
@@ -47,11 +47,11 @@
       ansible.builtin.copy:
         content: |
           {
-            "hostname": "{{ ansible_hostname }}",
-            "timestamp": "{{ ansible_date_time.iso8601 }}",
+            "hostname": "{{ ansible_facts['hostname'] }}",
+            "timestamp": "{{ ansible_facts['date_time']['iso8601'] }}",
             "git_commit": "{{ lookup('pipe', 'git -C ' + ansible_pull_workdir + ' rev-parse HEAD 2>/dev/null || echo unknown') }}",
             "ansible_version": "{{ ansible_version.full }}",
-            "macos_version": "{{ ansible_distribution_version }}",
+            "macos_version": "{{ ansible_facts['distribution_version'] }}",
             "success": true
           }
         dest: "{{ log_dir }}/ansible-last-run.json"
