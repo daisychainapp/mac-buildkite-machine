@@ -14,17 +14,15 @@
       Then re-run this playbook.
   when: not xcode_clt.stat.exists
 
-- name: Create standard directories
+- name: Create ansible workdir (root-owned)
   ansible.builtin.file:
-    path: "{{ item }}"
+    path: "{{ ansible_pull_workdir }}"
     state: directory
     mode: '0755'
-  loop:
-    - "{{ ansible_pull_workdir }}"
-    - "{{ buildkite_hooks_path }}"
-    - "{{ buildkite_builds_path }}"
-    - "{{ buildkite_plugins_path }}"
   become: true
+
+# Note: Don't pre-create buildkite directories under /opt/homebrew/
+# Homebrew owns that prefix and will create them when installing buildkite-agent
 
 - name: Ensure /etc/ansible directory exists
   ansible.builtin.file:
