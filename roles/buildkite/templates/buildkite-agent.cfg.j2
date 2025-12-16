@@ -4,7 +4,10 @@
 # Agent token from Buildkite
 token="{{ vault_buildkite_agent_token }}"
 
-# Agent name (includes hostname and agent number)
+# Number of agents to spawn
+spawn={{ buildkite_agent_count }}
+
+# Agent name (includes hostname and spawn number)
 name="{{ ansible_facts['hostname'] }}-%spawn"
 
 # Agent priority (higher = picked first)

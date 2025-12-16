@@ -36,52 +36,38 @@
     dest: "{{ buildkite_hooks_path }}/pre-exit"
     mode: '0755'
 
-- name: Ensure LaunchAgents directory exists
-  ansible.builtin.file:
-    path: "{{ ansible_facts['env']['HOME'] }}/Library/LaunchAgents"
-    state: directory
-    mode: '0755'
-
-- name: Deploy Buildkite agent launchd plists
-  ansible.builtin.template:
-    src: com.buildkite.buildkite-agent.plist.j2
-    dest: "{{ ansible_facts['env']['HOME'] }}/Library/LaunchAgents/com.buildkite.buildkite-agent-{{ item }}.plist"
-    mode: '0644'
-  loop: "{{ range(1, buildkite_agent_count + 1) | list }}"
-  notify: restart buildkite agents
-  vars:
-    agent_number: "{{ item }}"
-
-- name: Check if Buildkite agent services are loaded
-  ansible.builtin.shell: launchctl list | grep -q "com.buildkite.buildkite-agent-{{ item }}"
-  loop: "{{ range(1, buildkite_agent_count + 1) | list }}"
-  register: agent_loaded
+# Clean up old custom LaunchAgent plists (if migrating from custom plist approach)
+- name: Stop and remove old custom buildkite-agent plists
+  ansible.builtin.shell: |
+    for i in 1 2 3 4 5; do
+      plist="{{ ansible_facts['env']['HOME'] }}/Library/LaunchAgents/com.buildkite.buildkite-agent-${i}.plist"
+      if [ -f "$plist" ]; then
+        launchctl bootout gui/$(id -u)/com.buildkite.buildkite-agent-${i} 2>/dev/null || true
+        rm -f "$plist"
+      fi
+    done
+  args:
+    executable: /bin/bash
   changed_when: false
+
+# Use brew services to manage the buildkite-agent
+- name: Stop any existing brew buildkite-agent service
+  ansible.builtin.command: brew services stop buildkite/buildkite/buildkite-agent
+  register: brew_stop
+  changed_when: "'Stopping' in brew_stop.stdout or brew_stop.rc == 0"
   failed_when: false
 
-- name: Bootstrap Buildkite agent services (if not loaded)
-  ansible.builtin.command: >
-    launchctl bootstrap gui/{{ ansible_facts['user_uid'] }}
-    {{ ansible_facts['env']['HOME'] }}/Library/LaunchAgents/com.buildkite.buildkite-agent-{{ item.item }}.plist
-  loop: "{{ agent_loaded.results }}"
-  when: item.rc != 0
-  register: launchctl_bootstrap
-  changed_when: launchctl_bootstrap.rc == 0
+- name: Start buildkite-agent via brew services
+  ansible.builtin.command: brew services start buildkite/buildkite/buildkite-agent
+  register: brew_start
+  changed_when: "'Successfully started' in brew_start.stdout"
   failed_when: false
 
-- name: Start Buildkite agent services
-  ansible.builtin.command: >
-    launchctl kickstart -k gui/{{ ansible_facts['user_uid'] }}/com.buildkite.buildkite-agent-{{ item }}
-  loop: "{{ range(1, buildkite_agent_count + 1) | list }}"
-  register: launchctl_start
-  changed_when: launchctl_start.rc == 0
-  failed_when: false
-
-- name: Wait for agents to start
+- name: Wait for agent to start
   ansible.builtin.pause:
-    seconds: 5
+    seconds: 3
 
-- name: Verify Buildkite agents are running
+- name: Verify Buildkite agent is running
   ansible.builtin.command: pgrep -f buildkite-agent
   register: buildkite_running
   changed_when: false
@@ -89,4 +75,4 @@
 
 - name: Display Buildkite agent status
   ansible.builtin.debug:
-    msg: "Buildkite agents running: {{ buildkite_running.stdout_lines | length | default(0) }} of {{ buildkite_agent_count }}"
+    msg: "Buildkite agent processes running: {{ buildkite_running.stdout_lines | length | default(0) }}"

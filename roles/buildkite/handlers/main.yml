@@ -1,26 +1,8 @@
 ---
 # Buildkite handlers
 
-- name: Stop all Buildkite agents
-  ansible.builtin.shell: |
-    for i in $(seq 1 {{ buildkite_agent_count }}); do
-      launchctl bootout gui/$(id -u)/com.buildkite.buildkite-agent-${i} 2>/dev/null || true
-    done
-  args:
-    executable: /bin/bash
-  listen: restart buildkite agents
-
-- name: Wait for agents to stop
-  ansible.builtin.pause:
-    seconds: 5
-  listen: restart buildkite agents
-
-- name: Start all Buildkite agents
-  ansible.builtin.shell: |
-    for i in $(seq 1 {{ buildkite_agent_count }}); do
-      launchctl bootstrap gui/$(id -u) {{ ansible_facts['env']['HOME'] }}/Library/LaunchAgents/com.buildkite.buildkite-agent-${i}.plist 2>/dev/null || true
-      launchctl kickstart -k gui/$(id -u)/com.buildkite.buildkite-agent-${i} 2>/dev/null || true
-    done
-  args:
-    executable: /bin/bash
-  listen: restart buildkite agents
+- name: restart buildkite agents
+  ansible.builtin.command: brew services restart buildkite/buildkite/buildkite-agent
+  register: brew_restart
+  changed_when: "'Successfully' in brew_restart.stdout or brew_restart.rc == 0"
+  failed_when: false

@@ -175,10 +175,7 @@ cat /var/log/ansible-last-run.json
 ### Restart Buildkite agents
 
 ```bash
-for i in 1 2 3; do
-  launchctl unload ~/Library/LaunchAgents/com.buildkite.buildkite-agent-${i}.plist
-  launchctl load ~/Library/LaunchAgents/com.buildkite.buildkite-agent-${i}.plist
-done
+brew services restart buildkite/buildkite/buildkite-agent
 ```
 
 ## Scheduled Tasks
@@ -208,18 +205,17 @@ done
 /usr/local/bin/
   nightly-maintenance.sh                     # Nightly cleanup script
   check-disk-space.sh                        # Hourly disk check
+/opt/homebrew/var/log/
+  buildkite-agent.log                        # Agent stdout
+  buildkite-agent.error.log                  # Agent stderr
 /var/log/
   ansible-pull.log                           # Auto-update logs
   ansible-pull.error.log
   ansible-last-run.json                      # Last successful run metadata
-  buildkite-agent-1.log                      # Agent 1 stdout
-  buildkite-agent-1.error.log                # Agent 1 stderr
-  buildkite-agent-2.log                      # Agent 2 stdout
-  buildkite-agent-3.log                      # Agent 3 stdout
   nightly-maintenance.log                    # Maintenance logs
   disk-check.log                             # Disk space warnings
 ~/Library/LaunchAgents/
-  com.buildkite.buildkite-agent-*.plist      # Agent service definitions
+  homebrew.mxcl.buildkite-agent.plist        # Brew-managed agent service
 /Library/LaunchDaemons/
   com.internal.ansible-pull.plist            # Auto-update service
   com.internal.nightly-maintenance.plist     # Nightly maintenance service
@@ -236,7 +232,10 @@ done
 pgrep -f buildkite-agent
 
 # Check agent logs
-tail -100 /var/log/buildkite-agent-1.log
+tail -100 /opt/homebrew/var/log/buildkite-agent.log
+
+# Restart agent
+brew services restart buildkite/buildkite/buildkite-agent
 
 # Verify token
 grep token /opt/homebrew/etc/buildkite-agent/buildkite-agent.cfg
