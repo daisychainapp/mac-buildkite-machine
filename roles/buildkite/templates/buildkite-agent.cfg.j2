@@ -5,7 +5,7 @@
 token="{{ vault_buildkite_agent_token }}"
 
 # Agent name (includes hostname and agent number)
-name="{{ ansible_hostname }}-%spawn"
+name="{{ ansible_facts['hostname'] }}-%spawn"
 
 # Agent priority (higher = picked first)
 priority={{ buildkite_agent_priority }}
@@ -25,16 +25,23 @@ git-clone-mirror-flags="-v"
 
 # Job settings
 cancel-grace-period=30
+cancel-signal=SIGTERM
 disconnect-after-idle-timeout=0
 
-# Enable experiment features (optional)
-# experiment="git-mirrors"
+# Disable PTY allocation (prevents issues with non-interactive builds)
+no-pty=true
+
+# Acquire jobs with File locks to prevent race conditions
+acquire-job=file-lock
 
 # Shell (use bash for consistency)
 shell="/bin/bash -e -c"
 
-# Health check
+# Health check (port offset by spawn number)
 health-check-addr="127.0.0.1:808%spawn"
 
 # Logging
 debug=false
+
+# Timestamps in logs
+timestamp-lines=true

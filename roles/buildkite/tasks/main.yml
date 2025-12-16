@@ -52,13 +52,34 @@
   vars:
     agent_number: "{{ item }}"
 
-- name: Load Buildkite agent services
-  ansible.builtin.command: >
-    launchctl load {{ ansible_facts['env']['HOME'] }}/Library/LaunchAgents/com.buildkite.buildkite-agent-{{ item }}.plist
+- name: Check if Buildkite agent services are loaded
+  ansible.builtin.shell: launchctl list | grep -q "com.buildkite.buildkite-agent-{{ item }}"
   loop: "{{ range(1, buildkite_agent_count + 1) | list }}"
-  register: launchctl_load
-  changed_when: launchctl_load.rc == 0
+  register: agent_loaded
+  changed_when: false
   failed_when: false
+
+- name: Bootstrap Buildkite agent services (if not loaded)
+  ansible.builtin.command: >
+    launchctl bootstrap gui/{{ ansible_facts['user_uid'] }}
+    {{ ansible_facts['env']['HOME'] }}/Library/LaunchAgents/com.buildkite.buildkite-agent-{{ item.item }}.plist
+  loop: "{{ agent_loaded.results }}"
+  when: item.rc != 0
+  register: launchctl_bootstrap
+  changed_when: launchctl_bootstrap.rc == 0
+  failed_when: false
+
+- name: Start Buildkite agent services
+  ansible.builtin.command: >
+    launchctl kickstart -k gui/{{ ansible_facts['user_uid'] }}/com.buildkite.buildkite-agent-{{ item }}
+  loop: "{{ range(1, buildkite_agent_count + 1) | list }}"
+  register: launchctl_start
+  changed_when: launchctl_start.rc == 0
+  failed_when: false
+
+- name: Wait for agents to start
+  ansible.builtin.pause:
+    seconds: 5
 
 - name: Verify Buildkite agents are running
   ansible.builtin.command: pgrep -f buildkite-agent

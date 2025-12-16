@@ -4,7 +4,7 @@
 - name: Stop all Buildkite agents
   ansible.builtin.shell: |
     for i in $(seq 1 {{ buildkite_agent_count }}); do
-      launchctl unload {{ ansible_facts['env']['HOME'] }}/Library/LaunchAgents/com.buildkite.buildkite-agent-${i}.plist 2>/dev/null || true
+      launchctl bootout gui/$(id -u)/com.buildkite.buildkite-agent-${i} 2>/dev/null || true
     done
   args:
     executable: /bin/bash
@@ -18,7 +18,8 @@
 - name: Start all Buildkite agents
   ansible.builtin.shell: |
     for i in $(seq 1 {{ buildkite_agent_count }}); do
-      launchctl load {{ ansible_facts['env']['HOME'] }}/Library/LaunchAgents/com.buildkite.buildkite-agent-${i}.plist 2>/dev/null || true
+      launchctl bootstrap gui/$(id -u) {{ ansible_facts['env']['HOME'] }}/Library/LaunchAgents/com.buildkite.buildkite-agent-${i}.plist 2>/dev/null || true
+      launchctl kickstart -k gui/$(id -u)/com.buildkite.buildkite-agent-${i} 2>/dev/null || true
     done
   args:
     executable: /bin/bash
