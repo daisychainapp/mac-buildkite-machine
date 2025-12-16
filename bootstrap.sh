@@ -33,6 +33,35 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+# Validate SSH private key format
+validate_ssh_key() {
+    local key="$1"
+    if [[ "$key" == *"-----BEGIN"*"PRIVATE KEY-----"* ]] && [[ "$key" == *"-----END"*"PRIVATE KEY-----"* ]]; then
+        return 0
+    fi
+    return 1
+}
+
+# Read multiline input (SSH key) interactively
+read_ssh_key() {
+    local key=""
+    local line
+
+    echo "Paste your deploy key below (the private key content)."
+    echo "The key should start with '-----BEGIN' and end with '-----END...PRIVATE KEY-----'"
+    echo ""
+
+    while IFS= read -r line; do
+        key+="$line"$'\n'
+        # Stop when we see the END marker
+        if [[ "$line" == *"-----END"*"PRIVATE KEY-----"* ]]; then
+            break
+        fi
+    done
+
+    echo "$key"
+}
+
 # Check if running on macOS
 if [[ "$(uname)" != "Darwin" ]]; then
     log_error "This script is intended for macOS only"
